@@ -4,6 +4,7 @@ import datetime
 import time
 import CsvService
 from CsvService import CSVService
+from random import *
 
 class DataCollector:
     def __init__(self):
@@ -318,4 +319,81 @@ class DataCollector:
                         time.sleep(1)
                     except Exception as ex:
                         print(ex)
-            
+    
+    def collectHeroesLigaments(self):
+        ligaments = dict()
+        matchesID = set()
+        currMatchIndex = 0
+
+        with open("heroes.json") as fin:
+            data = json.load(fin)
+
+            for i in range(len(data)):
+                hero = data[i]
+                ligaments[hero["id"]] = dict()
+                for j in range(i + 1, len(data)):
+                    second_hero = data[j]
+                    ligaments[hero["id"]][second_hero["id"]] = {}
+                    ligaments[hero["id"]][second_hero["id"]]["games_with"] = 0
+                    ligaments[hero["id"]][second_hero["id"]]["win"] = 0
+                    
+        print(ligaments)
+
+        try:
+            a = 0
+            while (a==0):
+                data = []
+                with open("public_matches_data", 'r') as fin:
+                    lines = fin.readlines()
+
+                    for line in lines:
+                        line = line.split(';')
+                        data.append({ 
+                            "radiant_team": line[3],
+                            "dire_team": line[4][:len(line[4]) - 1],
+                            "radiant_win": bool(line[2])
+                        })
+
+                for match in data:
+                    radiantPickLigaments = self._getHeroesLigaments(list(map(int, match["radiant_team"].split(','))))
+                    direPickLigaments =  self._getHeroesLigaments(list(map(int, match["dire_team"].split(','))))
+
+                    if (match["radiant_win"] == True):
+                        for ligament in radiantPickLigaments:
+                            ligaments[min(ligament[0], ligament[1])][max(ligament[0], ligament[1])]["games_with"] += 1
+                            ligaments[min(ligament[0], ligament[1])][max(ligament[0], ligament[1])]["win"] += 1
+                                
+                        for ligament in direPickLigaments:
+                            ligaments[min(ligament[0], ligament[1])][max(ligament[0], ligament[1])]["games_with"] += 1
+
+                    else: 
+                        for ligament in radiantPickLigaments:
+                                    ligaments[min(ligament[0], ligament[1])][max(ligament[0], ligament[1])]["games_with"] += 1
+                                
+                        for ligament in direPickLigaments:
+                            ligaments[min(ligament[0], ligament[1])][max(ligament[0], ligament[1])]["games_with"] += 1
+                            ligaments[min(ligament[0], ligament[1])][max(ligament[0], ligament[1])]["win"] += 1
+                a = 1
+
+        except Exception as ex:
+            print(ex)
+            with open("ligaments.json", 'w') as fout:
+                json.dump(ligaments, fout)
+        
+        with open("ligaments.json", 'w') as fout:
+            json.dump(ligaments, fout)
+
+
+
+    def _getLigamentIndex(self, ligament):
+        return str(min(ligament[0], ligament[1])) + "," + str(max(ligament[0], ligament[1]))
+
+    def _getTwoLigamentsIndexes(self, firstLigament, secondLigament):
+        firstLigamentSum = firstLigament[0] + firstLigament[1]
+        secondLigamentSum = secondLigament[0] + secondLigament[1]
+
+        if (firstLigamentSum > secondLigamentSum):
+            return str(self._getLigamentIndex(firstLigament)), str(self._getLigamentIndex(secondLigament))
+        else: 
+            return str(self._getLigamentIndex(secondLigament)), str(self._getLigamentIndex(firstLigament))
+
