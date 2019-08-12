@@ -89,7 +89,11 @@ class DataCollector:
         for i in range(0, len(self.tiTeamsId)):
             matchesID = self._getTeamMatches(self.tiTeamsId[i])
 
-            for j in range(38, 50):
+            if (i == 0):
+                start = 44
+            else:
+                start = 38
+            for j in range(start, 50):
                 startTime = datetime.datetime.now()
                 print("Current step: ", i, j)
 
@@ -143,22 +147,21 @@ class DataCollector:
                     resultMatchData.append(secondTeamPlayerHeroDict[playerID])
 
                 print("Writing data to file: ")
-                csvService = CsvService.CSVService("outputdata.csv")
+                csvService = CsvService.CSVService("outputdata_new.csv")
                 csvService.writeToFile(resultMatchData, mode = 'a')
 
-                with open("matchWinners.txt", 'a') as fout:
+                with open("matchWinners_new.txt", 'a') as fout:
                     fout.write(str(self._getMatchWinner(matchData, i)) + "\n")
 
                 processTime = datetime.datetime.now() - startTime
-                print("Process time (second): ", processTime.seconds, ". Waiting for: ", 80)
-                time.sleep(80)
+                print("Process time (second): ", processTime.seconds)
     
     def _getMatchData(self, matchID):
-        url = self.matchesUrl + str(matchID)
+        url = self.matchesUrl + str(matchID) + "?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
         return json.loads(self.getClearedData(requests.get(url).text))
 
     def _getTeamHeroData(self, teamID):
-        url = self.teamsUrl + str(teamID) + "/heroes"
+        url = self.teamsUrl + str(teamID) + "/heroes?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
         self.requestCount += 1
         return json.loads(self.getClearedData(requests.get(url).text))
 
@@ -170,7 +173,7 @@ class DataCollector:
 
 
     def _getTeamMatches(self, teamId):
-        url = self.teamsUrl + str(teamId) + "/matches"
+        url = self.teamsUrl + str(teamId) + "/matches?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
         data = json.loads(self.getClearedData(requests.get(url).text))
         self.requestCount += 1
 
@@ -194,7 +197,7 @@ class DataCollector:
         return direTeamPlayersHeroesDict, radiantTeamPlayersHeroersDict
 
     def _getPlayersHeroWinrate(self, playerID, heroID):
-        url = self.playersUrl + str(playerID) + "/heroes"
+        url = self.playersUrl + str(playerID) + "/heroes?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
         data =  json.loads(self.getClearedData(requests.get(url).text))
         self.requestCount += 1
 
@@ -208,7 +211,7 @@ class DataCollector:
         return -1
     
     def _getPlayersHeroAgainstWinrate(self, playerID, heroID):
-        url = self.playersUrl + str(playerID) + "/heroes"
+        url = self.playersUrl + str(playerID) + "/heroes?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
         data = json.loads(self.getClearedData(requests.get(url).text))
         self.requestCount += 1
 

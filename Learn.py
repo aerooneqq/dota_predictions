@@ -4,23 +4,22 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import RidgeClassifier
 from sklearn import preprocessing
 
+from sklearn.feature_selection import RFE
 from sklearn.model_selection import train_test_split
 
 import pandas as pd
 import numpy as np
 
 class Learn:
-    def __init__(self, filePath):
-        self.filePath = filePath
+    def __init__(self):
         self.X = []
         self.Y = []
         self.idNumDict = {}
 
-    def _createPickList(self):
-        return [0 for _ in range(117)]
 
     def prepareData(self):
-        with open(self.filePath, 'r') as fin:
+        with open("outputdata_extended.csv", 'r') as fin, open("ligaments.json", 'r') as ligamentsFile:
+            ligaments = json.load(ligamentsFile)
             lines = fin.readlines()
 
             for i in range(1, len(lines)):
@@ -36,7 +35,68 @@ class Learn:
                 self.X.append(clearedData)
                 self.Y.append(int(data[len(data) - 1]))
 
-                    
+    def prepareMatchMakingData(self):
+        with open("public_matches_data.csv", 'r') as fin, open("ligaments.json", 'r') as ligamentsFile:
+            lines = fin.readlines()
+            ligaments = json.load(ligamentsFile)
+        
+            for i in range(1, 500):
+                data = lines[i].split(';')
+                
+                radiantPick = list(map(int, data[3].split(',')))
+                direPick = list(map(int, data[4].split(',')))
+
+                radiantPickList = self._getPickList(radiantPick)
+                direPickList = self._getPickList(direPick)
+
+                dataList = []
+
+                for rPick in radiantPick:
+                    for dPick in direPick:
+                        dataList.append(self._getMatchUp(rPick, dPick))
+
+                self.X.append(dataList)
+                self.Y.append(1 if data[2] == "True" else 0)
+                
+
+    def _getMatchUp(self, firstHero, secondHero):
+        with open("matchups/hero_" + str(firstHero) + ".json", 'r') as fin:
+            jsonData = (fin.read()).replace("\\", "")[1:]
+            jsonData = jsonData[:len(jsonData) - 1]
+
+            matchups = json.loads(jsonData)
+
+            for matchup in matchups:
+                if (matchup["hero_id"] == secondHero): 
+                    return matchup["wins"] / matchup["games_played"]
+        return 0.5
+
+    def _createPickList(self):
+        return [0 for _ in range(117)]
+
+    def _getPickList(self, pick):
+        pickList = self._createPickList()
+        heroesIDNumDict = self._getIdNumDict()
+
+        for i in range(len(pick)):
+            pickList[heroesIDNumDict[pick[i]]] = 1
+
+        return pickList
+
+
+    def _getIdNumDict(self):
+        heroesIDNumDic = {}
+        with open("heroes.json", 'r') as fin:
+            heroes = json.load(fin)
+
+            currId = 0
+            for hero in heroes:
+                heroesIDNumDic[hero["id"]] = currId
+                currId += 1
+        
+        return heroesIDNumDic
+
+
     def _getSamples(self):
         xTrain, xTest, yTrain, yTest = train_test_split(self.X, self.Y)
 
@@ -49,12 +109,13 @@ class Learn:
         numberLessThanFifty = 0
 
         for _ in range(iterCount):
-            #self.X = preprocessing.scale(self.X)
+            #self.X = preprocessing.normalize(self.X)
+            self.X = preprocessing.scale(self.X)
 
             xTrain, xTest, yTrain, yTest = self._getSamples()       
 
-            clf = LogisticRegression(C = 200, penalty="l2", solver="lbfgs", max_iter=1000)
-            #clf = MLPClassifier(solver='sgd', alpha=1e-3, hidden_layer_sizes=(100, 100, 20), max_iter=1000, activation="logistic")
+            #clf = LogisticRegression(C = 200, penalty="l1", solver="lbfgs", max_iter=1000)
+            clf = MLPClassifier(solver='lbfgs', alpha=1e-3, hidden_layer_sizes=(20, 20), activation="logistic")
 
             clf.fit(xTrain, yTrain)
 
