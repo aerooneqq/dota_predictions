@@ -251,8 +251,8 @@ class DataCollector:
                     for firstHero in firstPick:
                         for secondHero in secondPick:
                             heroesWinrate += str(self._getHeroesMatchUp(firstHero, secondHero)) + ";"
-                    
-                    newLines.append(line[:len(line) -1] + heroesWinrate + str(int(data[len(data) - 1])) + "\n")
+                
+                    newLines.append(line[:len(line) - 2] + heroesWinrate + str(int(data[len(data) - 1])) + "\n")
 
             
             fout.writelines(newLines)

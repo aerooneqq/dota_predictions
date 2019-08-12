@@ -2,6 +2,7 @@ from Learn import Learn
 
 from DataCollector import DataCollector
 
-dataCollector = DataCollector()
+learn = Learn("outputdata_extended.csv")
 
-dataCollector.extendData("outputdata_cleared.csv")
+learn.prepareData()
+learn.learn()

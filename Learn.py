@@ -2,6 +2,7 @@ import json
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import RidgeClassifier
+from sklearn import preprocessing
 
 from sklearn.model_selection import train_test_split
 
@@ -19,63 +20,22 @@ class Learn:
         return [0 for _ in range(117)]
 
     def prepareData(self):
-        with open("heroes.json", 'r') as fin:
-            heroes = json.load(fin)
-            
-            index = 0
-            for hero in heroes: 
-                self.idNumDict[hero["id"]] = index
-                index += 1
-        
-        with open(self.filePath, 'r') as fin, open("matchWinners.txt", "r") as fInMatches:
+        with open(self.filePath, 'r') as fin:
             lines = fin.readlines()
-            matchesResults = fInMatches.readlines()
-            ids = set()
-            index = 0
 
-            for i in range(len(lines)): 
-                line = lines[i]
-                if (len(line) > 3):
-                    matchRes = matchesResults[index]
-                    index += 1
-                    data = list(map(float, line.split(";")))
-                    if (not(int(data[0]) in ids)):
-                        ids.add(int(data[0]))
-                        clearedData = []
+            for i in range(1, len(lines)):
+                data = list(map(float, lines[i].split(";")))
 
-                        firstPick = self._createPickList()
+                clearedData = []
+                for i in range(6, 66):
+                    clearedData.append(data[i])
+                
+                for i in range(len(data) - 26, len(data) - 1):
+                    clearedData.append(data[i])
+                
+                self.X.append(clearedData)
+                self.Y.append(int(data[len(data) - 1]))
 
-                        for i in range(1, 6):
-                            firstPick[self.idNumDict[data[i]]] = 1
-                        
-                        secondPick = self._createPickList()
-
-                        for i in range(len(data) - 5, len(data)):
-                            secondPick[self.idNumDict[data[i]]] = 1
-                        
-                        #for pick in firstPick:
-                            #data.append(pick)
-                        
-                        #for pick in secondPick: 
-                            #data.append(pick)
-
-                        for i in range(6, len(data) - 5):
-                            clearedData.append(data[i])
-
-
-                        self.X.append(np.array(clearedData))
-
-                        if (matchRes[:len(matchRes) -1] == "True"):
-                            self.Y.append(1)
-                        else:
-                            self.Y.append(0)
-
-            self.X = np.array(self.X)
-            print(self.X.shape)
-            
-            self.Y = np.array(self.Y)
-            print(self.Y.shape)
-        
                     
     def _getSamples(self):
         xTrain, xTest, yTrain, yTest = train_test_split(self.X, self.Y)
@@ -89,11 +49,12 @@ class Learn:
         numberLessThanFifty = 0
 
         for _ in range(iterCount):
+            #self.X = preprocessing.scale(self.X)
+
             xTrain, xTest, yTrain, yTest = self._getSamples()       
 
-
-            clf = LogisticRegression(C = 1, penalty="l2")
-            #clf = MLPClassifier(solver='sgd', alpha=1e-3, hidden_layer_sizes=(50, 20), max_iter=1000, activation="logistic")
+            clf = LogisticRegression(C = 200, penalty="l2", solver="lbfgs", max_iter=1000)
+            #clf = MLPClassifier(solver='sgd', alpha=1e-3, hidden_layer_sizes=(100, 100, 20), max_iter=1000, activation="logistic")
 
             clf.fit(xTrain, yTrain)
 
