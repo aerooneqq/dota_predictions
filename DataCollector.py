@@ -86,11 +86,11 @@ class DataCollector:
     def collectData(self):
         self.requestCount = 0
         
-        for i in range(0, len(self.tiTeamsId)):
+        for i in range(16, len(self.tiTeamsId)):
             matchesID = self._getTeamMatches(self.tiTeamsId[i])
 
-            if (i == 0):
-                start = 44
+            if (i == 16):
+                start = 39
             else:
                 start = 38
             for j in range(start, 50):
@@ -234,8 +234,8 @@ class DataCollector:
         return -1
 
     
-    def extendData(self, fileName):
-        with open(fileName, 'r') as fin, open("outputdata_extended.txt", 'w') as fout:
+    def extendData(self):
+        with open("outputdata_cleared_new .csv", 'r') as fin, open("outputdata_extended_new.txt", 'w') as fout:
             ids = set()
 
             lines = fin.readlines()

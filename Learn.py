@@ -34,6 +34,9 @@ class Learn:
                 
                 self.X.append(clearedData)
                 self.Y.append(int(data[len(data) - 1]))
+        
+        self.X = np.array(self.X)
+        
 
     def prepareMatchMakingData(self):
         with open("public_matches_data.csv", 'r') as fin, open("ligaments.json", 'r') as ligamentsFile:
@@ -100,6 +103,12 @@ class Learn:
     def _getSamples(self):
         xTrain, xTest, yTrain, yTest = train_test_split(self.X, self.Y)
 
+        mean_train = xTrain.mean(axis=0)
+        std_train = xTrain.std(axis=0)
+
+        xTrain = (xTrain - mean_train) / std_train
+        xTest = (xTest - mean_train) / std_train
+
         return xTrain, xTest, yTrain, yTest
 
     
@@ -110,15 +119,16 @@ class Learn:
 
         for _ in range(iterCount):
             #self.X = preprocessing.normalize(self.X)
-            self.X = preprocessing.scale(self.X)
+            #self.X = preprocessing.scale(self.X)
 
             xTrain, xTest, yTrain, yTest = self._getSamples()       
 
-            #clf = LogisticRegression(C = 200, penalty="l1", solver="lbfgs", max_iter=1000)
-            clf = MLPClassifier(solver='lbfgs', alpha=1e-3, hidden_layer_sizes=(20, 20), activation="logistic")
+            #clf = LogisticRegression(C = 200, penalty="l2", solver="lbfgs", max_iter=2000)
+            clf = MLPClassifier(solver='lbfgs', alpha=1e-4, hidden_layer_sizes=(85, 85), activation="logistic", max_iter=1000)
 
             clf.fit(xTrain, yTrain)
 
+            print(clf.predict(xTest))
             score = clf.score(xTest, yTest)
             print(str(clf.score(xTrain, yTrain)) + " " + str(clf.score(xTest, yTest)))
             avg += score

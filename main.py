@@ -1,5 +1,8 @@
-from Learn import Learn
 
+from Learn import Learn
+from CsvService import CSVService
 from DataCollector import DataCollector
 
-DataCollector().collectData()
+learn = Learn()
+learn.prepareData()
+learn.learn()

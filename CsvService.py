@@ -25,7 +25,7 @@ class CSVService:
                             "team_0_win"]
 
     def prepareFile(self): 
-        with open (self.filePath, 'r') as fin, open("matchWinners.txt", "r") as matchFile, open("outputdata_cleared.csv", 'w') as fout:
+        with open ("outputdata_new.csv", 'r') as fin, open("matchWinners_new.txt", "r") as matchFile, open("outputdata_cleared_new .csv", 'w') as fout:
             matchesIDs = set()
             matchResults = list(map(lambda x : 1 if (x == "True\n") else 0, matchFile.readlines()))
 
