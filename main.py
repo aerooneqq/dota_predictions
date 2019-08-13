@@ -6,3 +6,5 @@ from DataCollector import DataCollector
 learn = Learn()
 learn.prepareData()
 learn.learn()
+
+

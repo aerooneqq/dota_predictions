@@ -3,6 +3,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import RidgeClassifier
 from sklearn import preprocessing
+from sklearn.metrics import roc_auc_score
 
 from sklearn.feature_selection import RFE
 from sklearn.model_selection import train_test_split
@@ -15,6 +16,9 @@ class Learn:
         self.X = []
         self.Y = []
         self.idNumDict = {}
+        
+        #learning properties:
+        self._iterCount = 100
 
 
     def prepareData(self):
@@ -22,19 +26,25 @@ class Learn:
             ligaments = json.load(ligamentsFile)
             lines = fin.readlines()
 
+            ids = set()
+
             for i in range(1, len(lines)):
                 data = list(map(float, lines[i].split(";")))
 
-                clearedData = []
-                for i in range(6, 66):
-                    clearedData.append(data[i])
-                
-                for i in range(len(data) - 26, len(data) - 1):
-                    clearedData.append(data[i])
-                
-                self.X.append(clearedData)
-                self.Y.append(int(data[len(data) - 1]))
+                if (not(int(data[0]) in ids)):
+                    ids.add(int(data[0]))
+
+                    clearedData = []
+                    for i in range(6, 66):
+                        clearedData.append(data[i])
+                    
+                    for i in range(len(data) - 26, len(data) - 1):
+                        clearedData.append(data[i])
+                    
+                    self.X.append(clearedData)
+                    self.Y.append(int(data[len(data) - 1]))
         
+        print(len(ids))
         self.X = np.array(self.X)
         
 
@@ -113,27 +123,74 @@ class Learn:
 
     
     def learn(self):
-        iterCount = 100
-        avg = 0
-        numberLessThanFifty = 0
+        models = [
+            { 
+                "name": "Logistic regression", 
+                "model": LogisticRegression(solver="lbfgs", penalty="l2"),
+                "avgRocAugScore": 0,
+                "avgTestScore": 0,
+                "avgTrainScore": 0
+            },
+            { 
+                "name": "MLP (activation: RELU, solver = LBFGS)", 
+                "model": MLPClassifier(solver="lbfgs", hidden_layer_sizes=(85), max_iter=1000),
+                "avgRocAugScore": 0,
+                "avgTestScore": 0,
+                "avgTrainScore": 0
+            },
+            { 
+                "name": "MLP (activation: LOGISTIC, solver = LBFGS)",
+                "model": MLPClassifier(solver="lbfgs", hidden_layer_sizes=(85, 85), activation="logistic", max_iter=1000),
+                "avgRocAugScore": 0,
+                "avgTestScore": 0,
+                "avgTrainScore": 0
+            },
+            {
+                "name": "MLP (activation: LOGISTIC, solver = SGD)",
+                "model": MLPClassifier(solver="sgd", hidden_layer_sizes=(85, 85), activation="logistic", max_iter=5000),
+                "avgRocAugScore": 0,
+                "avgTestScore": 0,
+                "avgTrainScore": 0
+            },
+            {
+                "name": "MLP (activation: RELU, solver = SGD)",
+                "model": MLPClassifier(solver="sgd", hidden_layer_sizes=(85, 85), activation="relu", alpha=1e-3, max_iter=1000),
+                "avgRocAugScore": 0,
+                "avgTestScore": 0,
+                "avgTrainScore": 0
+            }
+        ]
 
-        for _ in range(iterCount):
-            #self.X = preprocessing.normalize(self.X)
-            #self.X = preprocessing.scale(self.X)
+        for _ in range(self._iterCount):
+            for model in models:
+                xTrain, xTest, yTrain, yTest = self._getSamples()
+                
+                model["model"].fit(xTrain, yTrain)
+                
+                yTrainPredict = model["model"].score(xTrain, yTrain)
+                yPredicted = model["model"].predict(xTest)
+                score = model["model"].score(xTest, yTest)
+                rocAugScore = roc_auc_score(yTest, yPredicted)
 
-            xTrain, xTest, yTrain, yTest = self._getSamples()       
+                model["avgRocAugScore"] += rocAugScore
+                model["avgTestScore"] += score
+                model["avgTrainScore"] += yTrainPredict
 
-            #clf = LogisticRegression(C = 200, penalty="l2", solver="lbfgs", max_iter=2000)
-            clf = MLPClassifier(solver='lbfgs', alpha=1e-4, hidden_layer_sizes=(85, 85), activation="logistic", max_iter=1000)
 
-            clf.fit(xTrain, yTrain)
-
-            print(clf.predict(xTest))
-            score = clf.score(xTest, yTest)
-            print(str(clf.score(xTrain, yTrain)) + " " + str(clf.score(xTest, yTest)))
-            avg += score
-            if (score < 0.5):
-                numberLessThanFifty += 1
+                print("Model: " + model["name"])
+                print("Test score: " + str(score))
+                print("Train score: " + str(yTrainPredict))
+                print("ROC_AUG score: " + str(rocAugScore))
+                print()
         
-        print(avg/iterCount, numberLessThanFifty)
-         
+        for model in models:
+            model["avgTestScore"] /= self._iterCount
+            model["avgRocAugScore"] /= self._iterCount
+            model["avgTrainScore"] /= self._iterCount
+
+            print("FINAL...")
+            print("Model: " + model["name"])
+            print("Avg train score: " + str(model["avgTrainScore"]))
+            print("Avg test score: " + str(model["avgTestScore"]))
+            print("Avg roc aug: " + str(model["avgRocAugScore"]))
+            print()
