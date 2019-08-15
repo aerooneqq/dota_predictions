@@ -4,6 +4,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import RidgeClassifier
 from sklearn import preprocessing
 from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import GridSearchCV
 
 from sklearn.feature_selection import RFE
 from sklearn.model_selection import train_test_split
@@ -113,84 +114,28 @@ class Learn:
     def _getSamples(self):
         xTrain, xTest, yTrain, yTest = train_test_split(self.X, self.Y)
 
-        mean_train = xTrain.mean(axis=0)
-        std_train = xTrain.std(axis=0)
-
-        xTrain = (xTrain - mean_train) / std_train
-        xTest = (xTest - mean_train) / std_train
-
         return xTrain, xTest, yTrain, yTest
 
     
-    def learn(self):
-        models = [
-            { 
-                "name": "Logistic regression", 
-                "model": LogisticRegression(solver="lbfgs", penalty="l2"),
-                "avgRocAugScore": 0,
-                "avgTestScore": 0,
-                "avgTrainScore": 0
-            },
-            { 
-                "name": "MLP (activation: RELU, solver = LBFGS)", 
-                "model": MLPClassifier(solver="lbfgs", hidden_layer_sizes=(85), max_iter=1000),
-                "avgRocAugScore": 0,
-                "avgTestScore": 0,
-                "avgTrainScore": 0
-            },
-            { 
-                "name": "MLP (activation: LOGISTIC, solver = LBFGS)",
-                "model": MLPClassifier(solver="lbfgs", hidden_layer_sizes=(85, 85), activation="logistic", max_iter=1000),
-                "avgRocAugScore": 0,
-                "avgTestScore": 0,
-                "avgTrainScore": 0
-            },
-            {
-                "name": "MLP (activation: LOGISTIC, solver = SGD)",
-                "model": MLPClassifier(solver="sgd", hidden_layer_sizes=(85, 85), activation="logistic", max_iter=5000),
-                "avgRocAugScore": 0,
-                "avgTestScore": 0,
-                "avgTrainScore": 0
-            },
-            {
-                "name": "MLP (activation: RELU, solver = SGD)",
-                "model": MLPClassifier(solver="sgd", hidden_layer_sizes=(85, 85), activation="relu", alpha=1e-3, max_iter=1000),
-                "avgRocAugScore": 0,
-                "avgTestScore": 0,
-                "avgTrainScore": 0
-            }
-        ]
+    def learnLogisticRegression(self):
+        xTrain, xTest, yTrain, yTest = self._getSamples()
 
-        for _ in range(self._iterCount):
-            for model in models:
-                xTrain, xTest, yTrain, yTest = self._getSamples()
-                
-                model["model"].fit(xTrain, yTrain)
-                
-                yTrainPredict = model["model"].score(xTrain, yTrain)
-                yPredicted = model["model"].predict(xTest)
-                score = model["model"].score(xTest, yTest)
-                rocAugScore = roc_auc_score(yTest, yPredicted)
+        paramGrid = { 
+            'solver': ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
+            'C': np.linspace(0.001, 1, num = 5),
+            'max_iter': [1000, 1600, 1800, 2000]
+        }
 
-                model["avgRocAugScore"] += rocAugScore
-                model["avgTestScore"] += score
-                model["avgTrainScore"] += yTrainPredict
+        logisticRegression = LogisticRegression()
+        optimizer = GridSearchCV(logisticRegression, paramGrid, cv=3)
+
+        optimizer.fit(xTrain, yTrain)
+
+        print("Best model params: ")
+        print(optimizer.best_params_)
+
+        print('Train score: ' + str(optimizer.score(xTrain, yTrain)))
+        print('Test score: ' + str(optimizer.score(xTest, yTest)))
 
 
-                print("Model: " + model["name"])
-                print("Test score: " + str(score))
-                print("Train score: " + str(yTrainPredict))
-                print("ROC_AUG score: " + str(rocAugScore))
-                print()
-        
-        for model in models:
-            model["avgTestScore"] /= self._iterCount
-            model["avgRocAugScore"] /= self._iterCount
-            model["avgTrainScore"] /= self._iterCount
 
-            print("FINAL...")
-            print("Model: " + model["name"])
-            print("Avg train score: " + str(model["avgTrainScore"]))
-            print("Avg test score: " + str(model["avgTestScore"]))
-            print("Avg roc aug: " + str(model["avgRocAugScore"]))
-            print()
