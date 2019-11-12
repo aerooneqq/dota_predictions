@@ -3,8 +3,12 @@ import json
 import datetime
 import time
 import CsvService
+import os
 from CsvService import CSVService
 from random import *
+
+CURR_DIR = os.getcwd()
+FILE_PREFIX = 'main_event_day_1.txt'
 
 class DataCollector:
     def __init__(self):
@@ -12,12 +16,10 @@ class DataCollector:
         self.teamsUrl = "https://api.opendota.com/api/teams/"
         self.playersUrl = "https://api.opendota.com/api/players/"
         self.matchesUrl = "https://api.opendota.com/api/matches/"
-        self.apiKey = "c61ae31e-1b4e-4a65-85d4-465511dbe586"
-        self._liveGamesURL = "https://api.opendota.com/api/live?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
+        self._liveGamesURL = "https://api.opendota.com/api/live/"
         self._matchDataURL = "https://api.opendota.com/api/matches/"
 
         self._tiLeagueID = 10749
-
 
         self.requestsCount = 0
 
@@ -67,7 +69,7 @@ class DataCollector:
         data = json.loads(self.getClearedData(requests.get(self.heroesUrl).text))
         jsonText = json.dumps(data)
 
-        with open("heroes.json", 'w') as fout:
+        with open(os.path.join(CURR_DIR, 'json_data', 'heroes.json'), 'w') as fout:
             fout.write(jsonText)
 
     def _getMatchWinnerWithMatchID(self, matchID, index):
@@ -88,7 +90,6 @@ class DataCollector:
         return True
 
     def collectData(self):
-        self.requestCount = 0
         
         for i in range(16, len(self.tiTeamsId)):
             matchesID = self._getTeamMatches(self.tiTeamsId[i])
@@ -161,12 +162,11 @@ class DataCollector:
                 print("Process time (second): ", processTime.seconds)
     
     def _getMatchData(self, matchID):
-        url = self.matchesUrl + str(matchID) + "?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
+        url = self.matchesUrl + str(matchID)
         return json.loads(self.getClearedData(requests.get(url).text))
 
     def _getTeamHeroData(self, teamID):
-        url = self.teamsUrl + str(teamID) + "/heroes?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
-        self.requestCount += 1
+        url = self.teamsUrl + str(teamID)
         return json.loads(self.getClearedData(requests.get(url).text))
 
     def _getSecondTeamId(self, data, firstTeamId):
@@ -176,9 +176,8 @@ class DataCollector:
         return int(data["radiant_team"]["team_id"])
 
     def _getTeamMatches(self, teamId):
-        url = self.teamsUrl + str(teamId) + "/matches?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
+        url = self.teamsUrl + str(teamId)
         data = json.loads(self.getClearedData(requests.get(url).text))
-        self.requestCount += 1
 
         return list(map(lambda x : x["match_id"], data))
 
@@ -189,20 +188,16 @@ class DataCollector:
         direTeamPlayersHeroesDict = {}
 
         for playerData in playersData:
-            if (bool(playerData["isRadiant"]) == True):
+            if (playerData["team_id"] == firstTeamId):
                 radiantTeamPlayersHeroersDict[int(playerData["account_id"])] = int(playerData["hero_id"])
             else:
                 direTeamPlayersHeroesDict[int(playerData["account_id"])] = int(playerData["hero_id"])
         
-        if (int(data["radiant_team"]["team_id"]) == firstTeamId):
-            return radiantTeamPlayersHeroersDict, direTeamPlayersHeroesDict
-        
-        return direTeamPlayersHeroesDict, radiantTeamPlayersHeroersDict
+        return radiantTeamPlayersHeroersDict, direTeamPlayersHeroesDict
 
     def _getPlayersHeroWinrate(self, playerID, heroID):
-        url = self.playersUrl + str(playerID) + "/heroes?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
+        url = self.playersUrl + str(playerID) + "/heroes"
         data =  json.loads(self.getClearedData(requests.get(url).text))
-        self.requestCount += 1
 
         for hero in data:
             if (int(hero["hero_id"]) == heroID):
@@ -214,9 +209,8 @@ class DataCollector:
         return -1
     
     def _getPlayersHeroAgainstWinrate(self, playerID, heroID):
-        url = self.playersUrl + str(playerID) + "/heroes?api_key=c61ae31e-1b4e-4a65-85d4-465511dbe586"
+        url = self.playersUrl + str(playerID) + "/heroes"
         data = json.loads(self.getClearedData(requests.get(url).text))
-        self.requestCount += 1
 
         for hero in data:
             if (int(hero["hero_id"]) == heroID):
@@ -266,7 +260,7 @@ class DataCollector:
 
                 
     def _getHeroesMatchUp(self, firstHero, secondHero):
-        with open("matchups/hero_" + str(int(firstHero)) + ".json", encoding = "UTF8") as fin:
+        with open(os.path.join(CURR_DIR, 'json_data', 'matchups', 'hero_' + str(int(firstHero)) + ".json"), 'r', encoding = "UTF8") as fin:
             data = fin.read()
             data = data.replace("\\", "")[1:]
             data = data[:len(data) - 1]
@@ -304,7 +298,7 @@ class DataCollector:
 
 
     def _getHeroesMatchUps(self, fileName): 
-        with open("heroes.json", 'r') as fin:
+        with open(os.path.join(CURR_DIR, 'json_data', 'heroes.json'), 'r') as fin:
             heroes = json.load(fin)
 
             for hero in heroes:
@@ -328,8 +322,6 @@ class DataCollector:
     
     def collectHeroesLigaments(self):
         ligaments = dict()
-        matchesID = set()
-        currMatchIndex = 0
 
         with open("heroes.json") as fin:
             data = json.load(fin)
@@ -406,68 +398,78 @@ class DataCollector:
     def getTIMatches(self):
         liveGames = json.loads(requests.get(self._liveGamesURL).text)
         data = []
+        ids = set()
+        matchesDataPath = os.path.join(CURR_DIR, 'matches_data', 'main_event_day_3.txt')
 
-        for game in liveGames:
-            if (game["league_id"] == self._tiLeagueID):
-                matchID = game["match_id"]
-                matchData = self._getMatchData(matchID)
+        with open(matchesDataPath, 'r') as fin:
+            lines = fin.readlines()
 
-                resultMatchData = [matchID]
-
-                print("Getting the match data...")
-
-                #Get ids of the teams
-                firstTeamId = game["team_id_radiant"]
-                secondTeamId = game["team_id_dire"]
-
-                print("Getting the heroes data of the first team...")
-                firstTeamHeroesData = self._getTeamHeroData(firstTeamId)
-
-                print("Getting the heroes data of the second team...")
-                secondTeamHeroesData = self._getTeamHeroData(secondTeamId)
-
-                firstTeamPlayerHeroDict, secondTeamPlayerHeroDict = self._getPlayersHeroesDicts(matchID, 
-                    firstTeamId, matchData)
-                
-                print("Filling first team players-heroes data...")
-                for playerID in firstTeamPlayerHeroDict:
-                    resultMatchData.append(firstTeamPlayerHeroDict[playerID])
-
-                print("Filling first team heroes winrate...")
-                for playerID in firstTeamPlayerHeroDict:
-                    heroID = firstTeamPlayerHeroDict[playerID] 
-                    resultMatchData.append(self._getTeamsHeroWinrate(heroID, firstTeamHeroesData))
-
-
-                print("Filling first players winrate against enemy heroes...")
-                for playerID in firstTeamPlayerHeroDict:
-                    for enemyPlayerId in secondTeamPlayerHeroDict:
-                        heroID = secondTeamPlayerHeroDict[enemyPlayerId]
-                        resultMatchData.append(self._getPlayersHeroAgainstWinrate(playerID, heroID))
-
-                print("Filling second players winrate against enemy heroes...")
-                for playerID in secondTeamPlayerHeroDict:
-                    for enemyPlayerId in firstTeamPlayerHeroDict:
-                        heroID = firstTeamPlayerHeroDict[enemyPlayerId]
-                        resultMatchData.append(self._getPlayersHeroAgainstWinrate(playerID, heroID))
-
-                print("Filling the second team heroes winrate")
-                for playerID in secondTeamPlayerHeroDict:
-                    heroID = secondTeamPlayerHeroDict[playerID]
-                    resultMatchData.append(self._getTeamsHeroWinrate(heroID, secondTeamHeroesData))
-                                
-                print("Filling second team players-heroes data...")
-                for playerID in secondTeamPlayerHeroDict:
-                    resultMatchData.append(secondTeamPlayerHeroDict[playerID])
-
-                for firstPlayerID in firstTeamPlayerHeroDict:
-                    firstHero = firstTeamPlayerHeroDict[firstPlayerID]
-                    for secondPlayerID in secondTeamPlayerHeroDict:
-                        secondHero = secondTeamPlayerHeroDict[secondPlayerID]
-                        resultMatchData.append(self._getHeroesMatchUp(firstHero, secondHero))
-
-                data.append(resultMatchData)
+            for line in lines:
+                ids.add(int(line.split(';')[0]))
         
-        return data
+        for game in liveGames:
+            if (game["league_id"] == self._tiLeagueID and not(game["match_id"] in ids)):
+                matchID = game["match_id"]
+                print(matchID)
 
-                
+                if (not(game["players"][0]["hero_id"] == 0)):
+                    resultMatchData = [matchID, game["team_name_radiant"], game["team_name_dire"]]
+
+                    print("Getting the match data...")
+
+                    #Get ids of the teams
+                    firstTeamId = game["team_id_radiant"]
+                    secondTeamId = game["team_id_dire"]
+
+                    print("Getting the heroes data of the first team...")
+                    firstTeamHeroesData = self._getTeamHeroData(firstTeamId)
+
+                    print("Getting the heroes data of the second team...")
+                    secondTeamHeroesData = self._getTeamHeroData(secondTeamId)
+
+                    firstTeamPlayerHeroDict, secondTeamPlayerHeroDict = self._getPlayersHeroesDicts(matchID, 
+                        firstTeamId, game)
+                    
+                    print("Filling first team players-heroes data...")
+                    for playerID in firstTeamPlayerHeroDict:
+                        resultMatchData.append(firstTeamPlayerHeroDict[playerID])
+
+                    print("Filling first team heroes winrate...")
+                    for playerID in firstTeamPlayerHeroDict:
+                        heroID = firstTeamPlayerHeroDict[playerID] 
+                        resultMatchData.append(self._getTeamsHeroWinrate(heroID, firstTeamHeroesData))
+
+
+                    print("Filling first players winrate against enemy heroes...")
+                    for playerID in firstTeamPlayerHeroDict:
+                        for enemyPlayerId in secondTeamPlayerHeroDict:
+                            heroID = secondTeamPlayerHeroDict[enemyPlayerId]
+                            resultMatchData.append(self._getPlayersHeroAgainstWinrate(playerID, heroID))
+
+                    print("Filling second players winrate against enemy heroes...")
+                    for playerID in secondTeamPlayerHeroDict:
+                        for enemyPlayerId in firstTeamPlayerHeroDict:
+                            heroID = firstTeamPlayerHeroDict[enemyPlayerId]
+                            resultMatchData.append(self._getPlayersHeroAgainstWinrate(playerID, heroID))
+
+                    print("Filling the second team heroes winrate")
+                    for playerID in secondTeamPlayerHeroDict:
+                        heroID = secondTeamPlayerHeroDict[playerID]
+                        resultMatchData.append(self._getTeamsHeroWinrate(heroID, secondTeamHeroesData))
+                                    
+                    print("Filling second team players-heroes data...")
+                    for playerID in secondTeamPlayerHeroDict:
+                        resultMatchData.append(secondTeamPlayerHeroDict[playerID])
+
+                    for firstPlayerID in firstTeamPlayerHeroDict:
+                        firstHero = firstTeamPlayerHeroDict[firstPlayerID]
+                        for secondPlayerID in secondTeamPlayerHeroDict:
+                            secondHero = secondTeamPlayerHeroDict[secondPlayerID]
+                            resultMatchData.append(self._getHeroesMatchUp(firstHero, secondHero))
+
+                    with open(matchesDataPath, 'a') as fin:
+                        fin.write(";".join(list(map(str, resultMatchData))) + "\n")
+
+                    data.append(resultMatchData)
+        
+        return data   
